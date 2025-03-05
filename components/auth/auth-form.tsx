@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
@@ -21,7 +20,6 @@ export default function AuthForm() {
   const [mode, setMode] = useState<"signin" | "signup">("signin")
   const [debugInfo, setDebugInfo] = useState<string | null>(null)
 
-  // Completely simplified auth handler
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -30,33 +28,24 @@ export default function AuthForm() {
 
     try {
       if (mode === "signin") {
-        // Log the attempt
         console.log("Attempting to sign in with:", email)
-
-        // Sign in with Supabase
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
 
         if (error) throw error
-
-        // Log success and token info (partial for security)
         const tokenPreview = data.session?.access_token?.substring(0, 10) + "..."
         console.log("Sign in successful, token:", tokenPreview)
         setDebugInfo(`Auth successful. Redirecting...`)
 
-        // Store auth success in localStorage
         localStorage.setItem("auth_success", "true")
-
-        // Force a hard redirect to dashboard
         setTimeout(() => {
           window.location.href = "/dashboard"
         }, 1000)
 
         return
       } else {
-        // Sign up flow
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -204,4 +193,3 @@ export default function AuthForm() {
     </div>
   )
 }
-
