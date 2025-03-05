@@ -34,11 +34,14 @@ export default function AuthForm() {
           password,
         })
 
-        if (error) throw error
+        if (error) {
+          console.error("Sign in error:", error)
+          throw error
+        }
         
-        console.log("Sign in successful")
+        console.log("Sign in successful, navigating to dashboard")
         
-        // Directly navigate to dashboard after successful sign-in
+        // Immediate navigation to dashboard
         router.push("/dashboard")
         return
       } else {
@@ -50,7 +53,11 @@ export default function AuthForm() {
           },
         })
 
-        if (error) throw error
+        if (error) {
+          console.error("Sign up error:", error)
+          throw error
+        }
+        
         setError("Check your email for the confirmation link.")
       }
     } catch (err) {
