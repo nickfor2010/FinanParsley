@@ -41,6 +41,7 @@ export default function AuthForm() {
 
         localStorage.setItem("auth_success", "true")
         setTimeout(() => {
+          console.log("Redirecting to /dashboard")
           window.location.href = "/dashboard"
         }, 1000)
 
