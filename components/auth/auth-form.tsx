@@ -1,6 +1,6 @@
+// components/auth/auth-form.tsx
 "use client"
 
-import type React from "react"
 import { useState } from "react"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
