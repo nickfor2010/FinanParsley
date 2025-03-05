@@ -1,6 +1,6 @@
-// components/auth/auth-provider.tsx
 "use client"
 
+import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { Session, User } from "@supabase/supabase-js"
@@ -29,15 +29,18 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const router = useRouter()
 
   useEffect(() => {
-    const authSuccess = localStorage.getItem("auth_success")
-
     const getSession = async () => {
       try {
         console.log("Getting session...")
-        const { data: { session }, error } = await supabase.auth.getSession()
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
 
         if (error) {
           console.error("Error getting session:", error)
+          setIsLoading(false)
+          return
         }
 
         console.log("Session retrieved:", session ? "Session exists" : "No session")
@@ -46,13 +49,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           console.log("User authenticated:", session.user.email)
           setSession(session)
           setUser(session.user)
-          localStorage.removeItem("auth_success")
         } else {
           setSession(null)
           setUser(null)
-          if (authSuccess === "true") {
-            console.warn("Auth success was recorded but no session found")
-          }
         }
       } catch (err) {
         console.error("Unexpected error in getSession:", err)
@@ -63,7 +62,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     getSession()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // Set up the auth state change listener
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth state changed:", event)
 
       if (session) {
@@ -87,7 +89,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     try {
       await supabase.auth.signOut()
       console.log("User signed out")
-      window.location.href = "/auth"
+      router.push("/auth")
     } catch (error) {
       console.error("Error signing out:", error)
     }
