@@ -1,6 +1,5 @@
+// components/auth/auth-provider.tsx
 "use client"
-
-import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -30,16 +29,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const router = useRouter()
 
   useEffect(() => {
-    // Check for auth_success in localStorage to prevent redirect loops
     const authSuccess = localStorage.getItem("auth_success")
 
     const getSession = async () => {
       try {
         console.log("Getting session...")
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession()
+        const { data: { session }, error } = await supabase.auth.getSession()
 
         if (error) {
           console.error("Error getting session:", error)
@@ -51,15 +46,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           console.log("User authenticated:", session.user.email)
           setSession(session)
           setUser(session.user)
-
-          // Clear the auth_success flag once we've confirmed the session
           localStorage.removeItem("auth_success")
         } else {
           setSession(null)
           setUser(null)
-
-          // If we previously had a successful auth but now don't have a session,
-          // there might be an issue with cookies or storage
           if (authSuccess === "true") {
             console.warn("Auth success was recorded but no session found")
           }
@@ -73,10 +63,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     getSession()
 
-    // Set up the auth state change listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth state changed:", event)
 
       if (session) {
@@ -108,4 +95,3 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   return <AuthContext.Provider value={{ user, session, isLoading, signOut }}>{children}</AuthContext.Provider>
 }
-
