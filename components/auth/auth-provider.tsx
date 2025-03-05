@@ -1,8 +1,9 @@
 "use client"
 
 import type React from "react"
+
 import { createContext, useContext, useEffect, useState } from "react"
-import { useRouter, usePathname } from "next/navigation"
+import { useRouter } from "next/navigation"
 import type { Session, User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 
@@ -27,76 +28,85 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
-  const pathname = usePathname()
 
   useEffect(() => {
-    const handleAuthStateChange = async () => {
+    // Check for auth_success in localStorage to prevent redirect loops
+    const authSuccess = localStorage.getItem("auth_success")
+    console.log("Initial auth_success:", authSuccess)
+
+    const getSession = async () => {
       try {
+        console.log("Getting session...")
         const {
           data: { session },
           error,
         } = await supabase.auth.getSession()
 
         if (error) {
-          console.error("Session retrieval error:", error)
-          setIsLoading(false)
-          return
+          console.error("Error getting session:", error)
         }
 
-        // Update session and user state
-        setSession(session)
-        setUser(session?.user || null)
+        console.log("Session retrieved:", session ? "Session exists" : "No session")
 
-        // Automatic routing based on session
-        if (session && pathname === '/auth') {
-          router.replace('/dashboard')
-        } else if (!session && pathname.startsWith('/dashboard')) {
-          router.replace('/auth')
+        if (session) {
+          console.log("User authenticated:", session.user.email)
+          setSession(session)
+          setUser(session.user)
+
+          // Clear the auth_success flag once we've confirmed the session
+          localStorage.removeItem("auth_success")
+          console.log("auth_success removed from localStorage")
+        } else {
+          setSession(null)
+          setUser(null)
+
+          // If we previously had a successful auth but now don't have a session,
+          // there might be an issue with cookies or storage
+          if (authSuccess === "true") {
+            console.warn("Auth success was recorded but no session found")
+          }
         }
-
-        setIsLoading(false)
       } catch (err) {
-        console.error("Unexpected error in auth state check:", err)
+        console.error("Unexpected error in getSession:", err)
+      } finally {
         setIsLoading(false)
       }
     }
 
-    // Initial session check
-    handleAuthStateChange()
+    getSession()
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // Set up the auth state change listener
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth state changed:", event)
-      
-      setSession(session)
-      setUser(session?.user || null)
 
-      // Routing logic
-      if (session && pathname === '/auth') {
-        router.replace('/dashboard')
-      } else if (!session && pathname.startsWith('/dashboard')) {
-        router.replace('/auth')
+      if (session) {
+        console.log("User authenticated via state change:", session.user.email)
+        setSession(session)
+        setUser(session.user)
+      } else {
+        setSession(null)
+        setUser(null)
       }
+
+      setIsLoading(false)
     })
 
-    // Cleanup subscription
     return () => {
       subscription.unsubscribe()
     }
-  }, [pathname, router])
+  }, [])
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
-      router.push("/auth")
+      console.log("User signed out")
+      window.location.href = "/auth"
     } catch (error) {
-      console.error("Sign out error:", error)
+      console.error("Error signing out:", error)
     }
   }
 
-  return (
-    <AuthContext.Provider value={{ user, session, isLoading, signOut }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={{ user, session, isLoading, signOut }}>{children}</AuthContext.Provider>
 }
