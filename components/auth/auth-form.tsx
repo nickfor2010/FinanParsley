@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useRouter } from "next/navigation"
 
 export default function AuthForm() {
   const [email, setEmail] = useState("")
@@ -19,12 +18,13 @@ export default function AuthForm() {
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [mode, setMode] = useState<"signin" | "signup">("signin")
-  const router = useRouter()
+  const [debugInfo, setDebugInfo] = useState<string | null>(null)
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setDebugInfo(null)
 
     try {
       if (mode === "signin") {
@@ -34,15 +34,19 @@ export default function AuthForm() {
           password,
         })
 
-        if (error) {
-          console.error("Sign in error:", error)
-          throw error
-        }
-        
-        console.log("Sign in successful, navigating to dashboard")
-        
-        // Immediate navigation to dashboard
-        router.push("/dashboard")
+        if (error) throw error
+        const tokenPreview = data.session?.access_token?.substring(0, 10) + "..."
+        console.log("Sign in successful, token:", tokenPreview)
+        setDebugInfo(`Auth successful. Redirecting...`)
+
+        localStorage.setItem("auth_success", "true")
+        console.log("auth_success set in localStorage")
+
+        setTimeout(() => {
+          console.log("Redirecting to /dashboard")
+          window.location.href = "/dashboard"
+        }, 1000)
+
         return
       } else {
         const { error } = await supabase.auth.signUp({
@@ -53,18 +57,16 @@ export default function AuthForm() {
           },
         })
 
-        if (error) {
-          console.error("Sign up error:", error)
-          throw error
-        }
-        
+        if (error) throw error
         setError("Check your email for the confirmation link.")
       }
     } catch (err) {
       console.error("Authentication error:", err)
       setError(err instanceof Error ? err.message : "An error occurred during authentication")
     } finally {
-      setLoading(false)
+      if (mode !== "signin") {
+        setLoading(false)
+      }
     }
   }
 
@@ -88,6 +90,11 @@ export default function AuthForm() {
                 {error && (
                   <Alert variant="destructive">
                     <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                {debugInfo && (
+                  <Alert>
+                    <AlertDescription>{debugInfo}</AlertDescription>
                   </Alert>
                 )}
                 <div className="space-y-2">
@@ -134,7 +141,56 @@ export default function AuthForm() {
               </CardFooter>
             </form>
           </TabsContent>
-          {/* Signup tab remains the same */}
+          <TabsContent value="signup">
+            <form onSubmit={handleAuth}>
+              <CardContent className="space-y-4 pt-4">
+                {error && (
+                  <Alert variant={error.includes("Check your email") ? "default" : "destructive"}>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Create Account
+                </Button>
+              </CardFooter>
+            </form>
+          </TabsContent>
         </Tabs>
       </Card>
     </div>
