@@ -33,4 +33,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth?error=unexpected_error", request.url))
   }
 }
-
