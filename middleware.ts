@@ -1,12 +1,13 @@
 import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { cookies } from "next/headers"
 
 export async function middleware(req: NextRequest) {
-  // Create a Supabase client
+  // Create a response object
   const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res, cookies })
+
+  // Create a Supabase client
+  const supabase = createMiddlewareClient({ req, res })
 
   try {
     // Get the session
@@ -17,28 +18,27 @@ export async function middleware(req: NextRequest) {
     // Get the current path
     const path = req.nextUrl.pathname
 
-    // Protect dashboard routes
+    // Add debug header
+    res.headers.set("x-auth-debug", session ? "has-session" : "no-session")
+    console.log(`Middleware: ${session ? "has-session" : "no-session"} for path: ${path}`)
+
+    // Only protect dashboard routes
     if (path.startsWith("/dashboard")) {
+      // If no session, redirect to auth
       if (!session) {
-        console.log("No session for dashboard, redirecting to /auth")
+        console.log("No session found, redirecting to /auth")
         return NextResponse.redirect(new URL("/auth", req.url))
       }
     }
 
-    // Redirect logged-in users away from auth page
-    if (path === "/auth" && session) {
-      console.log("Logged in user on auth page, redirecting to /dashboard")
-      return NextResponse.redirect(new URL("/dashboard", req.url))
-    }
-
     return res
   } catch (e) {
-    console.error("Middleware error:", e)
+    console.error("Error in middleware:", e)
     return res
   }
 }
 
-// Specify routes to run middleware on
+// Only run middleware on dashboard routes
 export const config = {
-  matcher: ["/dashboard/:path*", "/auth"],
+  matcher: ["/dashboard/:path*"],
 }
